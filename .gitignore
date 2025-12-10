@@ -1,0 +1,47 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ENV / Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Build output
+dist/
+build/
+coverage/
+.out/
+.next/
+.vercel/
+
+# Cache
+.cache/
+.tmp/
+.eslintcache
+.nyc_output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo
+
+# PM2 logs
+.pids
+logs/
+*.log
+
+# Optional: if using Docker
+docker-compose.override.yml
