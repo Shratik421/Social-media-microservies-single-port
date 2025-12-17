@@ -5,7 +5,7 @@ services:
     build: ./api-gateway
     ports:
       - 3000:3000
-    env_file: -./api-gateway/.env
+    env_file: ./api-gateway/.env
     depends_on:
       - redis
       - rabbitmq
