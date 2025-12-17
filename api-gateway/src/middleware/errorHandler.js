@@ -1,11 +1,9 @@
-const logger = require("../utils/logger");
+import { logger } from "../utils/logger.js";
 
-const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, next) => {
   console.error(console.log("Error in error handler : ", err));
   logger.error(err.stack);
   res
     .status(err.status || 500)
     .json({ message: err.message || "Internal Server Error" });
 };
-
-module.exports = { errorHandler };

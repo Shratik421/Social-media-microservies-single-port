@@ -1,16 +1,19 @@
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const Redis = require("ioredis");
-const helmet = require("helmet");
-const { rateLimit } = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
-const logger = require("./utils/logger");
-const proxy = require("express-http-proxy");
-const { errorHandler } = require("./middleware/errorHandler");
+import express from "express";
+import dotenv from "dotenv";
+import cors from "cors";
+import Redis from "ioredis";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import { logger } from "./utils/logger.js";
+import proxy from "express-http-proxy";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { validateToken } from "./middleware/auth.Middleware.js";
+dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// app.use(express.json());
 
 // const redisClient = new Redis(process.env.REDIS_URL);
 let redisClient = null;
@@ -69,7 +72,6 @@ try {
 
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
 
 //rate limiting
 
@@ -123,12 +125,15 @@ app.use(rateLimitMiddleware);
 app.use((req, res, next) => {
   logger.info(`Received ${req.method} request to ${req.url}`);
   logger.info(`Request body: ${JSON.stringify(req.body)}`);
-  next();
+  if (req.is("multipart/form-data")) {
+    return next();
+  }
+  express.json()(req, res, next);
 });
 
 const proxyOptions = {
   proxyReqPathResolver: (req) => {
-    return req.originalUrl.replace(/^\/v1/, "api");
+    return req.originalUrl.replace(/^\/v1/, "/api");
   },
   proxyErrorHandler: (err, res, next) => {
     logger.error(`Proxy error : ${err.message}`);
@@ -144,7 +149,7 @@ const proxyOptions = {
 
 //setting up oproxy for identity service
 app.use(
-  "/v1",
+  "/v1/auth",
   proxy(process.env.IDENTITY_SERVICE_URL, {
     ...proxyOptions,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -174,16 +179,92 @@ app.use(
   })
 );
 
+//setting proxy for the our post service
+app.use(
+  "/v1/posts",
+  validateToken,
+  proxy(process.env.POST_SERVICE_URL, {
+    ...proxyOptions,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["Content-Type"] = "application/json";
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      console.log("Request sent to Identity Service : ", proxyReqOpts);
+      return proxyReqOpts;
+    },
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      const resBody = proxyResData.toString("utf-8");
+      console.log("resBody : ", resBody);
+      console.log("Response received from Post Service : ", resBody);
+      logger.info(
+        `Response received from Post Service : ${proxyResData.statusCode}`
+      );
+      logger.info(`Response received from Post Service : ${resBody}`);
+      console.log("Response received from Post Service : ", proxyResData);
+      try {
+        return JSON.parse(resBody);
+      } catch (error) {
+        console.log("error : ", error);
+        console.log("error : ", error.message);
+        logger.warn("Failed to parse proxy response as JSON:", error.message);
+        return resBody;
+      }
+    },
+  })
+);
+
+//setting proxy for the our media service
+app.use(
+  "/v1/media",
+  validateToken,
+  proxy(process.env.Media_SERVICE_URL, {
+    proxyReqPathResolver: (req) => {
+      return req.originalUrl.replace(/^\/v1/, "/api");
+    },
+
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      // DO NOT override content-type for multipart
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      return proxyReqOpts;
+    },
+
+    parseReqBody: false, // 🚨 REQUIRED for file uploads
+  })
+);
+
+//setting proxy for the our search service
+app.use(
+  "/v1/search",
+  validateToken,
+  proxy(process.env.SEARCH_SERVICE_URL, {
+    proxyReqPathResolver: (req) => {
+      return req.originalUrl.replace(/^\/v1/, "/api");
+    },
+
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      // DO NOT override content-type for multipart
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userId;
+      return proxyReqOpts;
+    },
+
+    parseReqBody: false, // 🚨 REQUIRED for file uploads
+  })
+);
+
 app.use(errorHandler);
 
 app.listen(process.env.PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
+  logger.info(`Api gateway service is running on PORT ${process.env.PORT}`);
   logger.info(
     `Identity service is running on PORT ${process.env.IDENTITY_SERVICE_URL}`
   );
   logger.info(
-    `Proxy service is running on PORT ${process.env.PROXY_SERVICE_URL}`
+    `Post service is running on PORT ${process.env.POST_SERVICE_URL}`
   );
+  logger.info(
+    `Media service is running on PORT ${process.env.Media_SERVICE_URL}`
+  );
+
   //   logger.info(`Redius URL ${process.env.REDIS_URL}`);
   console.log("Server is running on port", PORT);
 });

@@ -1,18 +1,18 @@
-require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const helmet = require("helmet");
-const winston = require("winston");
-const morgan = require("morgan");
-const { errorHandler } = require("./middleware/errorHandler");
-const logger = require("./utils/logger");
-const { RateLimiterRedis } = require("rate-limiter-flexible");
-const Redis = require("ioredis");
-const { rateLimit } = require("express-rate-limit");
-const { RedisStore } = require("rate-limit-redis");
-const routes = require("./routes/indentity-service");
-
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
+import winston from "winston";
+import morgan from "morgan";
+import errorHandler from "./middleware/errorHandler.js";
+import logger from "./utils/logger.js";
+import { RateLimiterRedis } from "rate-limiter-flexible";
+import Redis from "ioredis";
+import rateLimit from "express-rate-limit";
+import RedisStore from "rate-limit-redis";
+import routes from "./routes/indentity-service.js";
+dotenv.config();
 // // Global variables for connection status
 let redisClient = null;
 let isRedisConnected = false;
@@ -34,7 +34,7 @@ const connectToMongodb = async () => {
     isMongoConnected = false;
     logger.error("Mongodb Connection Error");
     console.log("Error : ", error.message);
-    console.log("error :",error)
+    console.log("error :", error);
     process.exit(1);
     throw error;
   }

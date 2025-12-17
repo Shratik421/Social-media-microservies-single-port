@@ -1,6 +1,6 @@
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const RefreshToken = require("../models/RefreshToken");
+import jwt from "jsonwebtoken"
+import crypto from "crypto";
+import RefreshToken from "../models/RefreshToken.js";
 
 
 const generateTokens = async (user) => {
@@ -25,4 +25,4 @@ const generateTokens = async (user) => {
 };
 
 
-module.exports = generateTokens;
+export default generateTokens;
